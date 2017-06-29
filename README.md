@@ -30,6 +30,8 @@ Since the Gem pg uses libpq, this program behaves as if you're using standard Po
 
 The flag `--stop-on-failure` may be useful in case you want to stop testing when a first corruption is found.
 
+The program will exit with 0 if no corruption is found otherwise it will exit with 1, so it's easily integrated with deployment automation or continuous integration tools like Jenkins.
+
 ## Credits and License
 This program was developed by [Doctolib](https://www.doctolib.fr).
 
