@@ -31,5 +31,6 @@ Since the Gem pg uses libpq, this program behaves as if you're using standard Po
 The flag `--stop-on-failure` may be useful in case you want to stop testing when a first corruption is found.
 
 ## Credits and License
-This program was developed by [Doctolib](https://www.doctolib.fr)
+This program was developed by [Doctolib](https://www.doctolib.fr).
+
 It's licensed under the standard Mit license.
