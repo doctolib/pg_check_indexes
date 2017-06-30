@@ -35,4 +35,4 @@ The program will exit with 0 if no corruption is found otherwise it will exit wi
 ## Credits and License
 This program was developed by [Doctolib](https://www.doctolib.fr).
 
-It's licensed under the standard Mit license.
+It's licensed under the standard MIT license.
