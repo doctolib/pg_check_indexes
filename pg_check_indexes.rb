@@ -285,38 +285,29 @@ begin
   puts '*** START OF INDEX/TABLE CONSISTENCY TEST ***'
   puts
 
-  table_where =
-    if opts_sc[:tablename].nil?
-      ''
-    else
-      " AND pgn.nspname = '#{opts_sc[:tablename].split('.')[0]}' AND pgct.relname = \'"\
-        "#{opts_sc[:tablename].split('.')[1]}' "
-    end
-
   # The query will return a list of tables and their indexes to test, with additional info we need.
-  res_objects = conn_1.exec(
-    <<-SQL
-      SELECT DISTINCT
+  query = <<-SQL
+      SELECT
         pgn.nspname table_schema,
         pgct.relname table_name,
         pgci.relname index_name,
         pgi.indkey,
         pgi.indisunique,
         pga.amname index_type,
-        pg_relation_size (pgct.relname::regclass) table_size,
+        pg_relation_size (pgct.oid::regclass) table_size,
         pg_catalog.pg_get_indexdef(pgi.indexrelid, 0, true) index_definition
       FROM
-        (SELECT indkey, indisunique, indrelid,  indexrelid, unnest(indclass) indclasses FROM pg_index) pgi
+        pg_index pgi
         INNER JOIN pg_class pgct ON pgct.oid = pgi.indrelid
         INNER JOIN pg_class pgci ON pgci.oid = pgi.indexrelid
         INNER JOIN pg_namespace pgn ON pgn.oid=pgct.relnamespace
-        INNER JOIN pg_opclass pgo ON pgo.oid = pgi.indclasses::oid
-        INNER JOIN pg_am pga ON pga.oid = pgo.opcmethod::oid
+        INNER JOIN pg_am pga ON pga.oid = pgci.relam
       WHERE
-        pgn.nspname NOT IN ('pg_temp_1', 'pg_toast', 'pg_toast_temp_1', 'pg_catalog', 'information_schema') #{table_where}
+        pgn.nspname !~ '^(pg_.*|information_schema)$'
+        AND ( $1::text IS NULL OR pgct.oid = $1::text::regclass )
       ORDER BY table_name, index_name;
     SQL
-  )
+  res_objects = conn_1.exec_params(query , [ opts_sc[:tablename] ])
 
   res_objects.each do |row_objects|
     if row_objects['table_size'].to_i < opts_sc[:threshold].to_i || opts_sc[:threshold].to_i == 0
@@ -338,17 +329,8 @@ begin
   puts '*** START OF FOREIGN KEYS CONSISTENCY TEST ***'
   puts
 
-  table_where =
-    if opts_sc[:tablename].nil?
-      ''
-    else
-      " AND n.nspname = '#{opts_sc[:tablename].split('.')[0]}' AND c.relname = \'"\
-        "#{opts_sc[:tablename].split('.')[1]}' "
-    end
-
   # The query will return a list of tables and their FK constraints to test, with additional info we need.
-  res_objects = conn_1.exec(
-    <<-SQL
+  query = <<-SQL
       SELECT
         n.nspname as table_schema,
         c.relname as table_name,
@@ -361,14 +343,12 @@ begin
         LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
       WHERE
         c.relkind IN ('r','')
-        AND n.nspname <> 'pg_catalog'
-        AND n.nspname <> 'information_schema'
-        AND n.nspname !~ '^pg_toast'
+        AND n.nspname !~ '^(pg_.*|information_schema)$'
         AND pg_catalog.pg_table_is_visible(c.oid)
-        #{table_where}
+        AND ( $1::text IS NULL OR c.oid = $1::text::regclass )
       ORDER BY 1, 2;
   SQL
-  )
+  res_objects = conn_1.exec(query, [ opts_sc[:tablename] ])
 
   res_objects.each do |row_objects|
     if row_objects['table_size'].to_i < opts_sc[:threshold].to_i || opts_sc[:threshold].to_i == 0
